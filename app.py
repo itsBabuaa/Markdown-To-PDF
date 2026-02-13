@@ -4,8 +4,6 @@ from pathlib import Path
 import tempfile
 import zipfile
 from io import BytesIO
-import subprocess
-import sys
 
 CSS = """
 * {
@@ -173,30 +171,16 @@ img {
 """
 
 
-def ensure_playwright_installed():
-    """Ensure Playwright browsers are installed."""
+def markdown_to_pdf(md_content, pdf_path):
+    """Convert markdown content to PDF using xhtml2pdf."""
     try:
-        subprocess.run(
-            [sys.executable, "-m", "playwright", "install", "chromium"],
-            check=True,
-            capture_output=True
-        )
-        return True
-    except Exception as e:
-        return False
-
-
-def markdown_to_pdf(md_content, pdf_path, margin=None):
-    """Convert markdown content to PDF using weasyprint."""
-    try:
-        from weasyprint import HTML, CSS as WeasyCss
+        from xhtml2pdf import pisa
         
         html_body = markdown.markdown(
             md_content,
             extensions=[
                 "fenced_code",
                 "tables",
-                "codehilite",
                 "nl2br",
                 "sane_lists",
                 "smarty",
@@ -216,10 +200,12 @@ def markdown_to_pdf(md_content, pdf_path, margin=None):
         </html>
         """
 
-        HTML(string=html).write_pdf(pdf_path)
-        return True
+        with open(pdf_path, "wb") as pdf_file:
+            pisa_status = pisa.CreatePDF(html.encode('utf-8'), dest=pdf_file)
+        
+        return not pisa_status.err
     except ImportError:
-        st.error("WeasyPrint not installed. Please install it: pip install weasyprint")
+        st.error("xhtml2pdf not installed. Please run: pip install xhtml2pdf")
         return False
     except Exception as e:
         st.error(f"Error generating PDF: {str(e)}")

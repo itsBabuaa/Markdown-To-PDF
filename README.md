@@ -31,7 +31,7 @@ A professional Streamlit web application for converting Markdown files to beauti
 pip install -r requirements.txt
 ```
 
-That's it! No browser installation needed - WeasyPrint works out of the box.
+That's it! Pure Python solution - no system dependencies or browser installation needed.
 
 ## Usage
 
@@ -66,7 +66,7 @@ python md_to_pdf.py
 ## Technical Details
 
 - Built with Streamlit for the web interface
-- Uses WeasyPrint for PDF generation (no browser dependencies!)
+- Uses xhtml2pdf for PDF generation (pure Python, no system dependencies!)
 - Python-Markdown for parsing
 - Supports GitHub-flavored Markdown extensions
-- Simple and lightweight
+- Simple, lightweight, and works everywhere

@@ -1,11 +1,11 @@
 import streamlit as st
-import asyncio
 import markdown
 from pathlib import Path
-from playwright.async_api import async_playwright
 import tempfile
 import zipfile
 from io import BytesIO
+import subprocess
+import sys
 
 CSS = """
 * {
@@ -173,60 +173,57 @@ img {
 """
 
 
-async def markdown_to_pdf_async(md_content, pdf_path, margin=None):
-    """Convert markdown content to PDF."""
-    html_body = markdown.markdown(
-        md_content,
-        extensions=[
-            "fenced_code",
-            "tables",
-            "codehilite",
-            "nl2br",
-            "sane_lists",
-            "smarty",
-            "toc",
-            "attr_list",
-        ]
-    )
-
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>{CSS}</style>
-    </head>
-    <body>{html_body}</body>
-    </html>
-    """
-
-    if margin is None:
-        margin = {
-            'top': '20mm',
-            'right': '20mm',
-            'bottom': '20mm',
-            'left': '20mm'
-        }
-
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page()
-        await page.set_content(html, wait_until="networkidle")
-        
-        await page.pdf(
-            path=pdf_path,
-            format="A4",
-            margin=margin,
-            print_background=True,
-            prefer_css_page_size=False,
+def ensure_playwright_installed():
+    """Ensure Playwright browsers are installed."""
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "playwright", "install", "chromium"],
+            check=True,
+            capture_output=True
         )
-        
-        await browser.close()
+        return True
+    except Exception as e:
+        return False
 
 
 def markdown_to_pdf(md_content, pdf_path, margin=None):
-    """Synchronous wrapper for markdown to PDF conversion."""
-    asyncio.run(markdown_to_pdf_async(md_content, pdf_path, margin))
+    """Convert markdown content to PDF using weasyprint."""
+    try:
+        from weasyprint import HTML, CSS as WeasyCss
+        
+        html_body = markdown.markdown(
+            md_content,
+            extensions=[
+                "fenced_code",
+                "tables",
+                "codehilite",
+                "nl2br",
+                "sane_lists",
+                "smarty",
+                "toc",
+                "attr_list",
+            ]
+        )
+
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>{CSS}</style>
+        </head>
+        <body>{html_body}</body>
+        </html>
+        """
+
+        HTML(string=html).write_pdf(pdf_path)
+        return True
+    except ImportError:
+        st.error("WeasyPrint not installed. Please install it: pip install weasyprint")
+        return False
+    except Exception as e:
+        st.error(f"Error generating PDF: {str(e)}")
+        return False
 
 
 # Streamlit App
@@ -269,14 +266,37 @@ tab1, tab2 = st.tabs(["📝 Single File", "📚 Multiple Files"])
 with tab1:
     st.subheader("Convert Single Markdown File")
     
-    uploaded_file = st.file_uploader(
-        "Upload a Markdown file",
-        type=['md', 'markdown'],
-        key="single"
+    # Input method selection
+    input_method = st.radio(
+        "Choose input method",
+        ["📁 Upload File", "✍️ Type/Paste Markdown"],
+        horizontal=True
     )
     
-    if uploaded_file:
-        md_content = uploaded_file.read().decode('utf-8')
+    md_content = None
+    output_name = "output.pdf"
+    
+    if input_method == "📁 Upload File":
+        uploaded_file = st.file_uploader(
+            "Upload a Markdown file",
+            type=['md', 'markdown'],
+            key="single"
+        )
+        
+        if uploaded_file:
+            md_content = uploaded_file.read().decode('utf-8')
+            output_name = uploaded_file.name.replace('.md', '.pdf').replace('.markdown', '.pdf')
+    
+    else:
+        md_content = st.text_area(
+            "Type or paste your Markdown here",
+            height=300,
+            placeholder="# Your Markdown Here\n\nStart typing or paste your markdown content...",
+            key="text_input"
+        )
+        output_name = st.text_input("Output PDF name", value="output.pdf")
+    
+    if md_content:
         
         # Preview options
         preview_col1, preview_col2 = st.columns([1, 1])
@@ -374,27 +394,10 @@ with tab1:
         
         st.divider()
         
-        # Output settings
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            output_name = st.text_input(
-                "Output PDF name",
-                value=uploaded_file.name.replace('.md', '.pdf').replace('.markdown', '.pdf')
-            )
-        
         if st.button("🚀 Convert to PDF", type="primary", use_container_width=True):
             with st.spinner("Converting to PDF..."):
-                try:
-                    margin = {
-                        'top': f'{top_margin}mm',
-                        'right': f'{right_margin}mm',
-                        'bottom': f'{bottom_margin}mm',
-                        'left': f'{left_margin}mm'
-                    }
-                    
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-                        markdown_to_pdf(md_content, tmp_file.name, margin)
-                        
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+                    if markdown_to_pdf(md_content, tmp_file.name):
                         with open(tmp_file.name, 'rb') as f:
                             pdf_data = f.read()
                         
@@ -408,9 +411,6 @@ with tab1:
                         )
                         
                         Path(tmp_file.name).unlink()
-                        
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
 
 with tab2:
     st.subheader("Convert Multiple Markdown Files")
@@ -439,32 +439,24 @@ with tab2:
         
         if st.button("🚀 Convert All to PDF", type="primary", use_container_width=True):
             with st.spinner(f"Converting {len(uploaded_files)} file(s)..."):
-                try:
-                    margin = {
-                        'top': f'{top_margin}mm',
-                        'right': f'{right_margin}mm',
-                        'bottom': f'{bottom_margin}mm',
-                        'left': f'{left_margin}mm'
-                    }
+                pdf_files = []
+                progress_bar = st.progress(0)
+                
+                for idx, uploaded_file in enumerate(uploaded_files):
+                    md_content = uploaded_file.read().decode('utf-8')
+                    pdf_name = uploaded_file.name.replace('.md', '.pdf').replace('.markdown', '.pdf')
                     
-                    pdf_files = []
-                    progress_bar = st.progress(0)
-                    
-                    for idx, uploaded_file in enumerate(uploaded_files):
-                        md_content = uploaded_file.read().decode('utf-8')
-                        pdf_name = uploaded_file.name.replace('.md', '.pdf').replace('.markdown', '.pdf')
-                        
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-                            markdown_to_pdf(md_content, tmp_file.name, margin)
-                            
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+                        if markdown_to_pdf(md_content, tmp_file.name):
                             with open(tmp_file.name, 'rb') as f:
                                 pdf_data = f.read()
                             
                             pdf_files.append((pdf_name, pdf_data))
                             Path(tmp_file.name).unlink()
-                        
-                        progress_bar.progress((idx + 1) / len(uploaded_files))
                     
+                    progress_bar.progress((idx + 1) / len(uploaded_files))
+                
+                if pdf_files:
                     st.success(f"✅ Successfully converted {len(pdf_files)} file(s)!")
                     
                     if download_option == "Individual PDFs (ZIP)":
@@ -492,9 +484,6 @@ with tab2:
                                 mime="application/pdf",
                                 use_container_width=True
                             )
-                    
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
 
 # Footer
 st.divider()

@@ -305,7 +305,6 @@ with tab1:
                     extensions=[
                         "fenced_code",
                         "tables",
-                        "codehilite",
                         "nl2br",
                         "sane_lists",
                         "smarty",
@@ -316,62 +315,90 @@ with tab1:
                 
                 # Apply similar CSS for preview
                 preview_html = f"""
-                <div style="
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                    line-height: 1.6;
-                    color: #24292f;
-                    padding: 20px;
-                    background: white;
-                    border: 1px solid #d0d7de;
-                    border-radius: 6px;
-                    max-height: 600px;
-                    overflow-y: auto;
-                ">
-                    {html_body}
-                </div>
                 <style>
-                    .stMarkdown h1 {{
+                    .preview-container {{
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #24292f;
+                        padding: 20px;
+                        background: white;
+                        border: 1px solid #d0d7de;
+                        border-radius: 6px;
+                        max-height: 600px;
+                        overflow-y: auto;
+                    }}
+                    .preview-container h1 {{
                         font-size: 2em;
                         border-bottom: 2px solid #d0d7de;
                         padding-bottom: 0.3em;
+                        margin-top: 0;
                     }}
-                    .stMarkdown h2 {{
+                    .preview-container h2 {{
                         font-size: 1.5em;
                         border-bottom: 1px solid #d0d7de;
                         padding-bottom: 0.3em;
                     }}
-                    .stMarkdown table {{
+                    .preview-container h3 {{ font-size: 1.25em; }}
+                    .preview-container h4 {{ font-size: 1em; }}
+                    .preview-container table {{
                         border-collapse: collapse;
                         width: 100%;
                         margin: 16px 0;
+                        border: 1px solid #d0d7de;
                     }}
-                    .stMarkdown th, .stMarkdown td {{
+                    .preview-container th, .preview-container td {{
                         border: 1px solid #d0d7de;
                         padding: 10px 13px;
                         text-align: left;
                     }}
-                    .stMarkdown th {{
+                    .preview-container th {{
                         background-color: #f6f8fa;
                         font-weight: 600;
                     }}
-                    .stMarkdown code {{
+                    .preview-container tr:nth-child(even) td {{
+                        background-color: #fafbfc;
+                    }}
+                    .preview-container code {{
                         background-color: #f6f8fa;
                         padding: 0.2em 0.4em;
                         border-radius: 3px;
                         font-family: 'Consolas', 'Monaco', monospace;
+                        font-size: 0.85em;
                     }}
-                    .stMarkdown pre {{
+                    .preview-container pre {{
                         background-color: #f6f8fa;
                         border-radius: 6px;
                         padding: 16px;
                         overflow-x: auto;
                     }}
-                    .stMarkdown blockquote {{
+                    .preview-container pre code {{
+                        background-color: transparent;
+                        padding: 0;
+                    }}
+                    .preview-container blockquote {{
                         border-left: 4px solid #d0d7de;
                         padding-left: 1em;
+                        margin: 0 0 16px 0;
                         color: #57606a;
                     }}
+                    .preview-container ul, .preview-container ol {{
+                        padding-left: 2em;
+                        margin-bottom: 16px;
+                    }}
+                    .preview-container p {{
+                        margin-bottom: 16px;
+                    }}
+                    .preview-container a {{
+                        color: #0969da;
+                        text-decoration: none;
+                    }}
+                    .preview-container a:hover {{
+                        text-decoration: underline;
+                    }}
                 </style>
+                <div class="preview-container">
+                    {html_body}
+                </div>
                 """
                 st.markdown(preview_html, unsafe_allow_html=True)
             else:

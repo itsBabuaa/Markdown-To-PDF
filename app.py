@@ -172,9 +172,12 @@ img {
 
 
 def markdown_to_pdf(md_content, pdf_path):
-    """Convert markdown content to PDF using xhtml2pdf."""
+    """Convert markdown content to PDF using fpdf2."""
     try:
-        from xhtml2pdf import pisa
+        from fpdf import FPDF, HTMLMixin
+        
+        class PDF(FPDF, HTMLMixin):
+            pass
         
         html_body = markdown.markdown(
             md_content,
@@ -189,23 +192,17 @@ def markdown_to_pdf(md_content, pdf_path):
             ]
         )
 
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <style>{CSS}</style>
-        </head>
-        <body>{html_body}</body>
-        </html>
-        """
-
-        with open(pdf_path, "wb") as pdf_file:
-            pisa_status = pisa.CreatePDF(html.encode('utf-8'), dest=pdf_file)
+        pdf = PDF()
+        pdf.add_page()
+        pdf.set_font("Helvetica", size=12)
         
-        return not pisa_status.err
+        # Write HTML content
+        pdf.write_html(html_body)
+        
+        pdf.output(pdf_path)
+        return True
     except ImportError:
-        st.error("xhtml2pdf not installed. Please run: pip install xhtml2pdf")
+        st.error("fpdf2 not installed. Please run: pip install fpdf2")
         return False
     except Exception as e:
         st.error(f"Error generating PDF: {str(e)}")

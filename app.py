@@ -10,6 +10,7 @@ def markdown_to_pdf(md_content, pdf_path):
     """Convert markdown content to PDF using fpdf2."""
     try:
         from fpdf import FPDF, HTMLMixin
+        import re
         
         class PDF(FPDF, HTMLMixin):
             def error(self, msg):
@@ -20,8 +21,28 @@ def markdown_to_pdf(md_content, pdf_path):
                     super().error(msg)
         
         # Remove image references from markdown
-        import re
         md_content = re.sub(r'!\[.*?\]\(.*?\)', '[Image removed]', md_content)
+        
+        # Remove or replace special Unicode characters that aren't supported
+        # Replace box drawing characters and other special chars
+        unicode_replacements = {
+            '┌': '+', '┐': '+', '└': '+', '┘': '+',
+            '├': '+', '┤': '+', '┬': '+', '┴': '+', '┼': '+',
+            '─': '-', '│': '|', '═': '=', '║': '|',
+            '╔': '+', '╗': '+', '╚': '+', '╝': '+',
+            '╠': '+', '╣': '+', '╦': '+', '╩': '+', '╬': '+',
+            '•': '*', '●': '*', '○': 'o', '◆': '*',
+            '→': '->', '←': '<-', '↑': '^', '↓': 'v',
+            '✓': 'v', '✗': 'x', '✔': 'v', '✘': 'x',
+            '…': '...', '–': '-', '—': '--',
+            '"': '"', '"': '"', ''': "'", ''': "'",
+        }
+        
+        for unicode_char, replacement in unicode_replacements.items():
+            md_content = md_content.replace(unicode_char, replacement)
+        
+        # Remove any remaining non-ASCII characters that might cause issues
+        md_content = md_content.encode('ascii', 'ignore').decode('ascii')
         
         html_body = markdown.markdown(
             md_content,

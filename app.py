@@ -12,7 +12,16 @@ def markdown_to_pdf(md_content, pdf_path):
         from fpdf import FPDF, HTMLMixin
         
         class PDF(FPDF, HTMLMixin):
-            pass
+            def error(self, msg):
+                """Override error to handle missing images gracefully."""
+                if "No such file or directory" in str(msg) or "image" in str(msg).lower():
+                    pass  # Ignore missing image errors
+                else:
+                    super().error(msg)
+        
+        # Remove image references from markdown
+        import re
+        md_content = re.sub(r'!\[.*?\]\(.*?\)', '[Image removed]', md_content)
         
         html_body = markdown.markdown(
             md_content,
